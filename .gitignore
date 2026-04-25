@@ -1,0 +1,33 @@
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node (将来的にビルドツールを使う場合)
+node_modules/
+package-lock.json
+yarn.lock
+dist/
+build/
+
+# Misc
+*.tmp
+*.bak
+.cache/
