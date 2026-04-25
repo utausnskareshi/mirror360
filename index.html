@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mirror360">
+<title>Mirror360 - PWA鏡 + 360°録画</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/icon.svg">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<!-- ===== Welcome / Help screen ===== -->
+<div id="welcome" class="screen">
+  <div class="welcome-content">
+    <h1>Mirror360</h1>
+    <p class="tagline">スマホをミラーに。<br>3秒録画で横顔も後頭部もぐるりと確認。</p>
+
+    <section>
+      <h2>使い方</h2>
+      <ol>
+        <li>通常はフロントカメラの<b>鏡</b>として使えます</li>
+        <li><b>●ボタン</b>で最大3秒撮影、横顔や後頭部を確認</li>
+        <li>撮影後は<b>スライダー</b>で任意位置を表示</li>
+        <li><b>☀ 明るさ</b>で顔まわりを白く照らします</li>
+        <li><b>⊞ グリッド</b>で左右対称をチェック</li>
+        <li><b>⏸ フリーズ</b>で一瞬を静止</li>
+        <li><b>📷 キャプチャ</b>でPNG保存</li>
+        <li>ピンチで<b>拡大/縮小</b>もできます</li>
+      </ol>
+    </section>
+
+    <section id="ios-install" class="install-guide">
+      <h2>iPhoneのホーム画面に追加</h2>
+      <ol>
+        <li>Safariでこのページを開く</li>
+        <li>下部の <b>共有 ⬆️</b> ボタンをタップ</li>
+        <li><b>「ホーム画面に追加」</b>を選択</li>
+        <li>右上の <b>「追加」</b> をタップ</li>
+      </ol>
+      <p class="note">※ ホーム画面から起動するとオフラインでも動作します</p>
+    </section>
+
+    <section id="android-install" class="install-guide">
+      <h2>Androidのホーム画面に追加</h2>
+      <ol>
+        <li>Chromeでこのページを開く</li>
+        <li>右上の <b>︙メニュー</b> をタップ</li>
+        <li><b>「アプリをインストール」</b> または <b>「ホーム画面に追加」</b> を選択</li>
+      </ol>
+      <button id="installBtn" class="primary" hidden>このアプリをインストール</button>
+    </section>
+
+    <section>
+      <h2>ご利用にあたって</h2>
+      <ul>
+        <li>カメラの利用を許可してください</li>
+        <li>録画はあなたの端末内のみで処理され、外部送信されません</li>
+        <li>画面ロック防止が有効化されます</li>
+      </ul>
+    </section>
+
+    <button id="startBtn" class="primary big">▶ はじめる</button>
+    <label class="dont-show">
+      <input type="checkbox" id="dontShow"> 次回から表示しない
+    </label>
+  </div>
+</div>
+
+<!-- ===== Mirror view ===== -->
+<div id="mirror" class="screen hidden">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="freezeCanvas" class="freeze-canvas hidden"></canvas>
+  <div id="brightnessFrame" class="brightness-frame hidden"></div>
+  <div id="grid" class="grid hidden">
+    <div class="grid-line v" style="left:50%"></div>
+    <div class="grid-line h" style="top:50%"></div>
+    <div class="grid-line v" style="left:33.33%"></div>
+    <div class="grid-line v" style="left:66.66%"></div>
+    <div class="grid-line h" style="top:33.33%"></div>
+    <div class="grid-line h" style="top:66.66%"></div>
+  </div>
+
+  <div class="top-bar">
+    <button id="helpBtn" class="icon-btn" aria-label="ヘルプ">?</button>
+    <span class="title">Mirror360</span>
+    <button id="settingsBtn" class="icon-btn" aria-label="設定">⚙</button>
+  </div>
+
+  <div class="zoom-control">
+    <span class="zoom-x">×</span>
+    <input type="range" id="zoomSlider" min="1" max="3" step="0.05" value="1">
+    <span id="zoomVal" class="zoom-val">1.0</span>
+  </div>
+
+  <div id="settingsPanel" class="settings-panel hidden">
+    <h3>録画時間</h3>
+    <div class="duration-options">
+      <button data-dur="3" class="dur active">3秒</button>
+      <button data-dur="5" class="dur">5秒</button>
+      <button data-dur="10" class="dur">10秒</button>
+    </div>
+    <h3>カメラ</h3>
+    <button id="switchCamera" class="row-btn">前後カメラ切替</button>
+  </div>
+
+  <div class="bottom-bar">
+    <button id="brightBtn" class="icon-btn" aria-label="明るさ">☀</button>
+    <button id="gridBtn" class="icon-btn" aria-label="グリッド">⊞</button>
+    <button id="freezeBtn" class="icon-btn" aria-label="フリーズ">⏸</button>
+    <button id="recordBtn" class="record-btn" aria-label="録画">
+      <span class="record-inner"></span>
+      <svg class="record-progress" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="46"></circle>
+      </svg>
+    </button>
+    <button id="mirrorBtn" class="icon-btn" aria-label="左右反転">↔</button>
+    <button id="captureBtn" class="icon-btn" aria-label="静止画キャプチャ">📷</button>
+  </div>
+
+  <div id="errorBox" class="error-box hidden">
+    <p id="errorMsg"></p>
+    <button id="retryBtn" class="primary">再試行</button>
+  </div>
+</div>
+
+<!-- ===== Playback view ===== -->
+<div id="playback" class="screen hidden">
+  <video id="playVideo" playsinline muted></video>
+
+  <div class="top-bar">
+    <button id="closePlayback" class="icon-btn" aria-label="戻る">✕</button>
+    <span class="title">プレビュー</span>
+    <button id="loopBtn" class="icon-btn active" aria-label="ループ再生">🔁</button>
+  </div>
+
+  <div class="scrub-bar">
+    <button id="prevFrame" class="icon-btn" aria-label="前のフレーム">◀</button>
+    <input type="range" id="scrub" min="0" max="1000" step="1" value="0">
+    <button id="nextFrame" class="icon-btn" aria-label="次のフレーム">▶</button>
+  </div>
+
+  <div class="playback-actions">
+    <button id="playPauseBtn" class="icon-btn big" aria-label="再生/一時停止">▶</button>
+    <button id="saveBtn" class="primary action">💾 保存</button>
+    <button id="backToMirror" class="secondary action">🏠 ミラーへ</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="./app.js"></script>
+</body>
+</html>
